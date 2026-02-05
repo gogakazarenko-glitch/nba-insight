@@ -17,51 +17,51 @@ def ask_ai():
 
     teams_context = json.dumps(data['teams'][:15], ensure_ascii=False)
     
-    prompt = f"Данные NBA: {teams_context}. На основе рейтингов составь 3 прогноза. Дай ответ СТРОГО в формате JSON списка объектов с полями: match, winner, total, prob, analysis. Только чистый JSON."
+    prompt = f"NBA Data: {teams_context}. Напиши 3 прогноза на сегодня. Ответ дай ТОЛЬКО в формате JSON списка объектов с полями: match, winner, total, prob, analysis."
 
-    # Пробуем универсальную модель gemini-pro, которая есть во всех версиях API
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={api_key}"
-    
-    headers = {'Content-Type': 'application/json'}
-    payload = {
-        "contents": [{
-            "parts": [{"text": prompt}]
-        }]
-    }
+    # Самый надежный список моделей на текущий момент
+    model_variants = [
+        "gemini-1.5-flash",
+        "gemini-1.5-pro",
+        "gemini-pro"
+    ]
 
-    try:
-        response = requests.post(url, headers=headers, json=payload)
-        result = response.json()
+    success = False
+    for model in model_variants:
+        print(f"Пробую модель: {model}...")
+        url = f"https://generativelanguage.googleapis.com/v1/models/{model}:generateContent?key={api_key}"
+        
+        payload = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {"response_mime_type": "application/json"}
+        }
 
-        if 'error' in result:
-            # Если gemini-pro тоже не найдена, пробуем последнюю попытку с явным указанием 1.5
-            print(f"Попытка 1 (gemini-pro) не удалась: {result['error'].get('message')}")
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={api_key}"
-            response = requests.post(url, headers=headers, json=payload)
+        try:
+            response = requests.post(url, json=payload)
             result = response.json()
 
-        if 'candidates' not in result:
-            print(f"Не удалось получить ответ от ИИ. Ответ сервера: {result}")
-            return
+            if 'candidates' in result:
+                ai_text = result['candidates'][0]['content']['parts'][0]['text']
+                predictions = json.loads(ai_text)
+                
+                # Если ИИ вернул словарь с ключом, вытаскиваем список
+                if isinstance(predictions, dict) and 'predictions' in predictions:
+                    predictions = predictions['predictions']
+                
+                data['ai_analysis'] = predictions
+                success = True
+                break
+            else:
+                print(f"Модель {model} не ответила: {result.get('error', {}).get('message', 'Unknown error')}")
+        except Exception as e:
+            print(f"Ошибка при вызове {model}: {e}")
 
-        ai_text = result['candidates'][0]['content']['parts'][0]['text']
-        
-        # Очистка от Markdown
-        clean_json = ai_text.strip()
-        if clean_json.startswith('```'):
-            clean_json = clean_json.split('```')[1]
-            if clean_json.startswith('json'):
-                clean_json = clean_json[4:]
-        
-        predictions = json.loads(clean_json.strip())
-        data['ai_analysis'] = predictions
-        
+    if success:
         with open('data/final_stats.json', 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
-        print("УРА! Прогнозы успешно записаны.")
-
-    except Exception as e:
-        print(f"Критическая ошибка: {e}")
+        print("УРА! Данные успешно обновлены.")
+    else:
+        print("К сожалению, ни одна модель не подошла. Проверь API ключ в Google AI Studio.")
 
 if __name__ == "__main__":
     ask_ai()

@@ -4,10 +4,9 @@ import requests
 import re
 
 def ask_ai():
-    # Твой токен от Hugging Face теперь лежит здесь
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
-        print("ОШИБКА: Ключ не найден в Secrets!")
+        print("ОШИБКА: Ключ не найден!")
         return
     
     try:
@@ -17,16 +16,15 @@ def ask_ai():
         print(f"Ошибка загрузки данных: {e}")
         return
 
-    # Берем данные команд для анализа
     teams_context = json.dumps(data['teams'][:12], ensure_ascii=False)
     
-    # Специальный формат промпта для Llama 3
+    # Промпт для Llama
     prompt = f"System: Ты аналитик NBA. На основе этих данных: {teams_context} составь 3 прогноза. Дай ответ ТОЛЬКО в формате JSON списка: [{{'match': 'Команда1 - Команда2', 'winner': 'Победитель', 'total': 'ТБ/ТМ', 'prob': '85%', 'analysis': 'Кратко почему'}}] \nAssistant: ["
 
-    # Используем проверенную модель
-    url = "https://api-inference.huggingface.co/models/meta-llama/Llama-3.1-8B-Instruct"
+    # НОВЫЙ URL, который требует Hugging Face
+    url = "https://router.huggingface.co/hf-inference/models/meta-llama/Llama-3.1-8B-Instruct"
     
-    headers = {"Authorization": f"Bearer {api_key}"}
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     payload = {
         "inputs": prompt,
         "parameters": {
@@ -37,25 +35,27 @@ def ask_ai():
     }
 
     try:
-        print("Отправка запроса в Hugging Face...")
+        print("Отправка запроса в новый Router Hugging Face...")
         response = requests.post(url, headers=headers, json=payload, timeout=60)
+        
+        # Если модель еще загружается, HF может вернуть 503, добавим проверку
+        if response.status_code == 503:
+            print("Модель прогревается, подожди минуту и запусти снова.")
+            return
+
         result = response.json()
 
         if isinstance(result, list) and 'generated_text' in result[0]:
-            # Восстанавливаем JSON (добавляем открывающую скобку, которую мы указали в промпте)
             raw_text = "[" + result[0]['generated_text']
-            
-            # Находим JSON в тексте с помощью регулярки
             json_match = re.search(r'\[.*\]', raw_text, re.DOTALL)
             if json_match:
                 predictions = json.loads(json_match.group(0))
                 data['ai_analysis'] = predictions
-                
                 with open('data/final_stats.json', 'w', encoding='utf-8') as f:
                     json.dump(data, f, ensure_ascii=False, indent=4)
-                print("УРА! Прогнозы успешно сгенерированы и записаны.")
+                print("УРА! Прогнозы успешно записаны через новый API.")
             else:
-                print(f"Не удалось вытащить JSON. Ответ был: {raw_text[:100]}")
+                print(f"Не удалось найти JSON. Ответ: {raw_text[:100]}")
         else:
             print(f"Ошибка API: {result}")
 

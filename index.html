@@ -1,1 +1,70 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NBA AI Insight</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-black text-gray-100 font-sans">
+    <div class="max-w-4xl mx-auto p-4 md:p-10">
+        <header class="mb-12 border-b border-gray-800 pb-6 flex justify-between items-end">
+            <div>
+                <h1 class="text-4xl font-black italic tracking-tighter text-white">NBA <span class="text-blue-500">AI</span></h1>
+                <p class="text-xs text-gray-500 uppercase tracking-widest mt-1">Free Analytics Dashboard</p>
+            </div>
+            <div class="text-[10px] text-blue-400 font-mono italic">Powered by Gemini AI</div>
+        </header>
 
+        <div id="ai-predictions" class="grid gap-6 mb-16">
+            <p class="text-gray-600 animate-pulse">Загрузка прогнозов от нейросети...</p>
+        </div>
+
+        <h2 class="text-xl font-bold mb-6 italic uppercase tracking-tight">Power Rankings (30 Teams)</h2>
+        <div class="overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 shadow-2xl">
+            <table class="w-full text-left text-sm">
+                <thead class="bg-gray-800 text-gray-400 text-[10px] uppercase">
+                    <tr>
+                        <th class="p-4">Rank</th>
+                        <th class="p-4">Team</th>
+                        <th class="p-4 text-center">Rating</th>
+                    </tr>
+                </thead>
+                <tbody id="stats-table"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        async function load() {
+            try {
+                const r = await fetch('./data/final_stats.json');
+                const d = await r.json();
+
+                if (d.ai_analysis) {
+                    document.getElementById('ai-predictions').innerHTML = d.ai_analysis.map(p => `
+                        <div class="bg-gradient-to-br from-gray-900 to-black p-6 rounded-3xl border border-blue-900/50 shadow-blue-900/20 shadow-xl">
+                            <h3 class="text-xl font-black mb-2 uppercase italic text-white">${p.match}</h3>
+                            <div class="flex gap-4 mb-4 font-bold text-xs">
+                                <span class="text-green-400">PICK: ${p.winner}</span>
+                                <span class="text-orange-400">TOTAL: ${p.total}</span>
+                                <span class="text-blue-400 ml-auto">${p.prob} CONFIDENCE</span>
+                            </div>
+                            <p class="text-sm text-gray-400 italic leading-relaxed border-t border-gray-800 pt-4">"${p.reason}"</p>
+                        </div>
+                    `).join('');
+                }
+
+                document.getElementById('stats-table').innerHTML = d.teams.map(t => `
+                    <tr class="border-b border-gray-800 hover:bg-gray-800/30 transition">
+                        <td class="p-4 font-mono text-gray-600">${t.rank}</td>
+                        <td class="p-4 font-bold uppercase italic text-blue-100">${t.team}</td>
+                        <td class="p-4 text-center font-bold text-blue-500">${t.rating}</td>
+                    </tr>
+                `).join('');
+            } catch (e) { console.log(e); }
+        }
+        load();
+    </script>
+</body>
+</html>

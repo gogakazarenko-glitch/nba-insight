@@ -1,1 +1,184 @@
-{}
+{
+    "teams": [
+        {
+            "rank": "1",
+            "team": "Okla City",
+            "rating": "10.5",
+            "sos": "2-0"
+        },
+        {
+            "rank": "2",
+            "team": "Detroit",
+            "rating": "5.1",
+            "sos": "5-2"
+        },
+        {
+            "rank": "3",
+            "team": "Houston",
+            "rating": "4.8",
+            "sos": "2-4"
+        },
+        {
+            "rank": "4",
+            "team": "Boston",
+            "rating": "4.7",
+            "sos": "3-5"
+        },
+        {
+            "rank": "5",
+            "team": "New York",
+            "rating": "4.5",
+            "sos": "1-2"
+        },
+        {
+            "rank": "6",
+            "team": "San Antonio",
+            "rating": "4.4",
+            "sos": "8-2"
+        },
+        {
+            "rank": "7",
+            "team": "Minnesota",
+            "rating": "4.0",
+            "sos": "4-3"
+        },
+        {
+            "rank": "8",
+            "team": "Cleveland",
+            "rating": "3.8",
+            "sos": "1-8"
+        },
+        {
+            "rank": "9",
+            "team": "Denver",
+            "rating": "3.5",
+            "sos": "3-5"
+        },
+        {
+            "rank": "10",
+            "team": "Golden State",
+            "rating": "2.3",
+            "sos": "1-5"
+        },
+        {
+            "rank": "11",
+            "team": "Phoenix",
+            "rating": "1.8",
+            "sos": "4-6"
+        },
+        {
+            "rank": "12",
+            "team": "Miami",
+            "rating": "1.3",
+            "sos": "4-6"
+        },
+        {
+            "rank": "13",
+            "team": "Philadelphia",
+            "rating": "1.0",
+            "sos": "5-5"
+        },
+        {
+            "rank": "14",
+            "team": "LA Lakers",
+            "rating": "0.7",
+            "sos": "0-5"
+        },
+        {
+            "rank": "15",
+            "team": "Toronto",
+            "rating": "0.7",
+            "sos": "1-7"
+        },
+        {
+            "rank": "16",
+            "team": "Atlanta",
+            "rating": "0.3",
+            "sos": "2-8"
+        },
+        {
+            "rank": "17",
+            "team": "Orlando",
+            "rating": "0.3",
+            "sos": "4-7"
+        },
+        {
+            "rank": "18",
+            "team": "LA Clippers",
+            "rating": "0.3",
+            "sos": "3-6"
+        },
+        {
+            "rank": "19",
+            "team": "Charlotte",
+            "rating": "-0.4",
+            "sos": "1-4"
+        },
+        {
+            "rank": "20",
+            "team": "Memphis",
+            "rating": "-1.3",
+            "sos": "0-8"
+        },
+        {
+            "rank": "21",
+            "team": "Portland",
+            "rating": "-1.6",
+            "sos": "4-9"
+        },
+        {
+            "rank": "22",
+            "team": "Dallas",
+            "rating": "-2.5",
+            "sos": "4-7"
+        },
+        {
+            "rank": "23",
+            "team": "Milwaukee",
+            "rating": "-2.7",
+            "sos": "3-6"
+        },
+        {
+            "rank": "24",
+            "team": "Chicago",
+            "rating": "-3.1",
+            "sos": "3-5"
+        },
+        {
+            "rank": "25",
+            "team": "New Orleans",
+            "rating": "-5.0",
+            "sos": "1-7"
+        },
+        {
+            "rank": "26",
+            "team": "Indiana",
+            "rating": "-5.7",
+            "sos": "2-10"
+        },
+        {
+            "rank": "27",
+            "team": "Sacramento",
+            "rating": "-6.8",
+            "sos": "3-9"
+        },
+        {
+            "rank": "28",
+            "team": "Brooklyn",
+            "rating": "-7.2",
+            "sos": "1-9"
+        },
+        {
+            "rank": "29",
+            "team": "Utah",
+            "rating": "-7.2",
+            "sos": "3-7"
+        },
+        {
+            "rank": "30",
+            "team": "Washington",
+            "rating": "-9.5",
+            "sos": "0-7"
+        }
+    ]
+}

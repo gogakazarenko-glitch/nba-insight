@@ -4,9 +4,10 @@ import requests
 import re
 
 def ask_ai():
+    # Используем тот же секрет, куда ты вставишь ключ DeepSeek
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
-        print("ОШИБКА: Ключ не найден в Secrets!")
+        print("ОШИБКА: Ключ не найден!")
         return
     
     try:
@@ -17,46 +18,47 @@ def ask_ai():
         return
 
     teams_context = json.dumps(data['teams'][:15], ensure_ascii=False)
-    prompt = f"Данные NBA: {teams_context}. Напиши 3 прогноза на сегодня. Ответ дай СТРОГО в формате JSON списка объектов: [{{'match': '...', 'winner': '...', 'total': '...', 'prob': '...', 'analysis': '...'}}]. Только JSON."
+    
+    prompt = f"Данные NBA: {teams_context}. Напиши 3 прогноза на сегодня. Ответ дай СТРОГО в формате JSON списка объектов: [{{'match': '...', 'winner': '...', 'total': '...', 'prob': '...', 'analysis': '...'}}]. Пиши только JSON."
 
-    # Комбинации, которые мы будем пробовать
-    attempts = [
-        ("v1beta", "gemini-1.5-flash"),
-        ("v1", "gemini-pro"),
-        ("v1beta", "gemini-pro"),
-        ("v1", "gemini-1.5-flash")
-    ]
+    # URL для DeepSeek
+    url = "https://api.deepseek.com/chat/completions"
+    
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    
+    payload = {
+        "model": "deepseek-chat",
+        "messages": [
+            {"role": "system", "content": "Ты профессиональный каппер и аналитик NBA. Выдаешь только JSON."},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.7
+    }
 
-    success = False
-    for api_version, model in attempts:
-        print(f"Пробую: {api_version} | Модель: {model}...")
-        url = f"https://generativelanguage.googleapis.com/{api_version}/models/{model}:generateContent?key={api_key}"
-        
-        try:
-            response = requests.post(url, json={"contents": [{"parts": [{"text": prompt}]}]}, timeout=10)
-            result = response.json()
+    try:
+        response = requests.post(url, headers=headers, json=payload, timeout=30)
+        result = response.json()
 
-            if 'candidates' in result:
-                raw_text = result['candidates'][0]['content']['parts'][0]['text']
-                json_match = re.search(r'\[.*\]', raw_text, re.DOTALL)
-                
-                if json_match:
-                    data['ai_analysis'] = json.loads(json_match.group(0))
-                    success = True
-                    print(f"СРАБОТАЛО на {model} ({api_version})!")
-                    break
+        if 'choices' in result:
+            raw_text = result['choices'][0]['message']['content']
+            
+            # Находим JSON в тексте
+            json_match = re.search(r'\[.*\]', raw_text, re.DOTALL)
+            if json_match:
+                data['ai_analysis'] = json.loads(json_match.group(0))
+                with open('data/final_stats.json', 'w', encoding='utf-8') as f:
+                    json.dump(data, f, ensure_ascii=False, indent=4)
+                print("УРА! DeepSeek успешно проанализировал матчи.")
             else:
-                err_msg = result.get('error', {}).get('message', 'Unknown error')
-                print(f"Не подошло: {err_msg[:50]}...")
-        except Exception as e:
-            print(f"Ошибка соединения: {e}")
+                print(f"JSON не найден в ответе: {raw_text}")
+        else:
+            print(f"Ошибка DeepSeek API: {result}")
 
-    if success:
-        with open('data/final_stats.json', 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=4)
-        print("Файл успешно обновлен!")
-    else:
-        print("!!! КРИТИЧЕСКАЯ ОШИБКА: Ни одна модель не ответила. Пожалуйста, создай НОВЫЙ ключ в Google AI Studio.")
+    except Exception as e:
+        print(f"Критическая ошибка: {e}")
 
 if __name__ == "__main__":
     ask_ai()

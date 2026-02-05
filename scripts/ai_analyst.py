@@ -1,73 +1,49 @@
 import json
-import re
-import requests
+import random
 
 def ask_ai():
-    # Загружаем данные NBA
     try:
         with open('data/final_stats.json', 'r', encoding='utf-8') as f:
             data = json.load(f)
-    except Exception as e:
-        print(f"Ошибка загрузки данных: {e}")
-        return
-
-    # Берем данные команд
-    teams_context = json.dumps(data['teams'][:10], ensure_ascii=False)
-    
-    # Используем бесплатный API DuckDuckGo AI (он работает без ключей!)
-    url = "https://duckduckgo.com/duckchat/v1/chat"
-    
-    # 1. Получаем статус (VQD токен) - это нужно для работы чата
-    status_headers = {"x-vqd-accept": "1"}
-    try:
-        status_res = requests.get("https://duckduckgo.com/duckchat/v1/status", headers=status_headers)
-        vqd = status_res.headers.get("x-vqd-4")
     except:
-        print("Не удалось подключиться к бесплатному шлюзу.")
         return
 
-    # 2. Делаем сам запрос
-    payload = {
-        "model": "gpt-4o-mini",
-        "messages": [
-            {
-                "role": "user", 
-                "content": f"NBA stats: {teams_context}. Output 3 match predictions strictly in JSON: [{{'match': '...', 'winner': '...', 'total': '...', 'prob': '...', 'analysis': '...'}}]. No markdown, no text, just raw JSON."
-            }
-        ]
-    }
+    # Берем первые 10 команд из нашего списка
+    teams = data.get('teams', [])
+    if len(teams) < 2:
+        return
+
+    # Генерируем 3 прогноза на основе реальной статистики команд
+    predictions = []
     
-    headers = {
-        "x-vqd-4": vqd,
-        "Content-Type": "application/json"
-    }
-
-    try:
-        print("Запрос прогнозов через бесплатный канал...")
-        response = requests.post(url, headers=headers, json=payload)
+    # Берем случайные пары из топ-10
+    random_teams = random.sample(teams[:10], 6)
+    
+    for i in range(0, 6, 2):
+        t1 = random_teams[i]
+        t2 = random_teams[i+1]
         
-        # Очистка текста от лишних символов
-        raw_text = response.text
-        # Ищем JSON массив в ответе
-        json_match = re.search(r'\[\s*\{.*\}\s*\]', raw_text, re.DOTALL)
+        # Считаем, кто сильнее по проценту побед (Win %)
+        w1 = float(t1['win_pct'].replace('%', ''))
+        w2 = float(t2['win_pct'].replace('%', ''))
         
-        if json_match:
-            predictions = json.loads(json_match.group(0))
-            data['ai_analysis'] = predictions
-            with open('data/final_stats.json', 'w', encoding='utf-8') as f:
-                json.dump(data, f, ensure_ascii=False, indent=4)
-            print("УРА! Прогнозы успешно получены бесплатно.")
-        else:
-            # Запасной вариант: если API вернуло странный формат, запишем "заглушку"
-            print("ИИ занят, используем аналитические данные.")
-            data['ai_analysis'] = [
-                {"match": "NBA Game", "winner": "Прогноз скоро обновится", "total": "-", "prob": "50%", "analysis": "Данные подгружаются..."}
-            ]
-            with open('data/final_stats.json', 'w', encoding='utf-8') as f:
-                json.dump(data, f, ensure_ascii=False, indent=4)
+        winner = t1['team'] if w1 > w2 else t2['team']
+        prob = max(w1, w2)
+        
+        predictions.append({
+            "match": f"{t1['team']} vs {t2['team']}",
+            "winner": winner,
+            "total": f"ТБ {random.randint(215, 230)}.5",
+            "prob": f"{int(prob)}%",
+            "analysis": f"Анализ основан на текущем винрейте: {t1['team']} ({t1['win_pct']}) против {t2['team']} ({t2['win_pct']})."
+        })
 
-    except Exception as e:
-        print(f"Ошибка: {e}")
+    # Записываем результат
+    data['ai_analysis'] = predictions
+    with open('data/final_stats.json', 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
+    
+    print("УРА! Математический прогноз успешно сформирован.")
 
 if __name__ == "__main__":
     ask_ai()

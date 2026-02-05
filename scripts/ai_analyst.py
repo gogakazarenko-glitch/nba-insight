@@ -5,7 +5,7 @@ import requests
 def ask_ai():
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
-        print("ОШИБКА: Ключ GEMINI_API_KEY не найден в секретах Гитхаба!")
+        print("ОШИБКА: Ключ GEMINI_API_KEY не найден!")
         return
     
     try:
@@ -15,43 +15,53 @@ def ask_ai():
         print(f"Ошибка загрузки файла: {e}")
         return
 
-    # Подготовка данных (топ-15 команд)
+    # Берем топ-15 команд для анализа
     teams_context = json.dumps(data['teams'][:15], ensure_ascii=False)
     
-    prompt = f"Данные NBA: {teams_context}. На основе этих рейтингов составь 3 прогноза. Дай ответ СТРОГО в формате JSON списка объектов с полями: match, winner, total, prob, analysis. Только чистый JSON."
+    prompt = f"Данные NBA: {teams_context}. На основе рейтингов составь 3 прогноза. Дай ответ СТРОГО в формате JSON списка объектов с полями: match, winner, total, prob, analysis. Только чистый JSON, без лишнего текста."
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+    # Используем версию v1 и модель gemini-1.5-flash
+    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={api_key}"
     
+    headers = {'Content-Type': 'application/json'}
+    payload = {
+        "contents": [{
+            "parts": [{"text": prompt}]
+        }]
+    }
+
     try:
-        response = requests.post(url, json={
-            "contents": [{"parts": [{"text": prompt}]}]
-        })
-        
+        response = requests.post(url, headers=headers, json=payload)
         result = response.json()
 
-        # Если Google вернул ошибку, мы увидим её в логах
         if 'error' in result:
-            print(f"Гитхаб получил ошибку от Google: {result['error']['message']}")
+            print(f"Ошибка от Google: {result['error'].get('message', 'Unknown error')}")
             return
 
         if 'candidates' not in result:
-            print(f"Странный ответ от ИИ (нет candidates). Полный ответ: {result}")
+            print(f"Нет кандидатов в ответе. Ответ: {result}")
             return
 
+        # Извлекаем текст
         ai_text = result['candidates'][0]['content']['parts'][0]['text']
         
-        # Очистка текста от Markdown кавычек ```json ... ```
-        clean_json = ai_text.replace('```json', '').replace('```', '').strip()
-        predictions = json.loads(clean_json)
+        # Очистка от Markdown (если ИИ добавил ```json)
+        clean_json = ai_text.strip()
+        if clean_json.startswith('```'):
+            clean_json = clean_json.split('```')[1]
+            if clean_json.startswith('json'):
+                clean_json = clean_json[4:]
+        
+        predictions = json.loads(clean_json.strip())
         
         data['ai_analysis'] = predictions
         
         with open('data/final_stats.json', 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
-        print("Успех! Прогнозы записаны в файл.")
+        print("УРА! Прогнозы успешно записаны.")
 
     except Exception as e:
-        print(f"Общая ошибка в скрипте: {e}")
+        print(f"Критическая ошибка: {e}")
 
 if __name__ == "__main__":
     ask_ai()

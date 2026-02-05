@@ -23,40 +23,42 @@ def ask_ai():
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://github.com/nba-dashboard", # OpenRouter иногда требует заголовок
+        "HTTP-Referer": "https://github.com/nba-dashboard", 
         "X-Title": "NBA AI Analyst"
     }
     
     payload = {
-        "model": "meta-llama/llama-3.1-8b-instruct:free", # Меняем на стабильную Llama
+        "model": "huggingfaceh4/zephyr-7b-beta:free", # Самая живучая бесплатная модель
         "messages": [
             {
                 "role": "user", 
-                "content": f"NBA Data: {teams_context}. Output 3 match predictions as a JSON list. Format: [{{'match': '...', 'winner': '...', 'total': '...', 'prob': '...', 'analysis': '...'}}]. Give only raw JSON without markdown or code blocks."
+                "content": f"NBA stats: {teams_context}. Output 3 match predictions as JSON: [{{'match': '...', 'winner': '...', 'total': '...', 'prob': '...', 'analysis': '...'}}]. JSON only!"
             }
-        ]
+        ],
+        "temperature": 0.1
     }
 
     try:
-        print("Отправка запроса в OpenRouter (Llama 3.1 Free)...")
+        print("Отправка запроса в OpenRouter (Zephyr Free)...")
         response = requests.post(url, headers=headers, json=payload, timeout=60)
         result = response.json()
 
         if 'choices' in result:
             raw_text = result['choices'][0]['message']['content']
-            
-            # Находим JSON (Llama иногда добавляет текст, мы его отсекаем)
             json_match = re.search(r'\[.*\]', raw_text, re.DOTALL)
             
             if json_match:
                 data['ai_analysis'] = json.loads(json_match.group(0))
                 with open('data/final_stats.json', 'w', encoding='utf-8') as f:
                     json.dump(data, f, ensure_ascii=False, indent=4)
-                print("УРА! Прогнозы получены через Llama.")
+                print("ЕСТЬ! Наконец-то данные получены.")
             else:
-                print(f"JSON не найден. ИИ прислал: {raw_text[:150]}")
+                print(f"JSON не найден. ИИ ответил: {raw_text[:150]}")
         else:
+            # Если и это упадет, попробуем просто 'openrouter/auto'
             print(f"Ошибка OpenRouter: {result}")
+            if 'error' in result and result['error'].get('code') == 404:
+                print("Похоже, бесплатные модели временно отключены. Попробуем позже или сменим провайдера.")
 
     except Exception as e:
         print(f"Критическая ошибка: {e}")

@@ -16,51 +16,63 @@ def ask_ai():
         print(f"Ошибка загрузки данных: {e}")
         return
 
+    # Берем топ команд для контекста
     teams_context = json.dumps(data['teams'][:12], ensure_ascii=False)
     
-    # Промпт для Llama
-    prompt = f"System: Ты аналитик NBA. На основе этих данных: {teams_context} составь 3 прогноза. Дай ответ ТОЛЬКО в формате JSON списка: [{{'match': 'Команда1 - Команда2', 'winner': 'Победитель', 'total': 'ТБ/ТМ', 'prob': '85%', 'analysis': 'Кратко почему'}}] \nAssistant: ["
-
-    # НОВЫЙ URL, который требует Hugging Face
-    url = "https://router.huggingface.co/hf-inference/models/meta-llama/Llama-3.1-8B-Instruct"
+    # URL для чат-моделей (самый стабильный)
+    url = "https://router.huggingface.co/hf-inference/v1/chat/completions"
     
-    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    
     payload = {
-        "inputs": prompt,
-        "parameters": {
-            "max_new_tokens": 1000,
-            "return_full_text": False,
-            "temperature": 0.7
-        }
+        "model": "meta-llama/Llama-3.1-8B-Instruct",
+        "messages": [
+            {
+                "role": "system", 
+                "content": "Ты аналитик NBA. Твоя задача — выдать 3 прогноза на основе данных. Ответ должен быть СТРОГО в формате JSON списка объектов."
+            },
+            {
+                "role": "user", 
+                "content": f"Данные: {teams_context}. Напиши 3 прогноза в формате JSON: [{{'match': '...', 'winner': '...', 'total': '...', 'prob': '...', 'analysis': '...'}}]. Пиши только чистый JSON без текста."
+            }
+        ],
+        "max_tokens": 1000,
+        "temperature": 0.1 # Минимум фантазии, максимум точности
     }
 
     try:
-        print("Отправка запроса в новый Router Hugging Face...")
+        print("Отправка запроса в Chat Router...")
         response = requests.post(url, headers=headers, json=payload, timeout=60)
         
-        # Если модель еще загружается, HF может вернуть 503, добавим проверку
-        if response.status_code == 503:
-            print("Модель прогревается, подожди минуту и запусти снова.")
+        # Если пришла ошибка (например, 503 или 429)
+        if response.status_code != 200:
+            print(f"Ошибка сервера (Статус {response.status_code}): {response.text}")
             return
 
         result = response.json()
-
-        if isinstance(result, list) and 'generated_text' in result[0]:
-            raw_text = "[" + result[0]['generated_text']
+        
+        if 'choices' in result:
+            raw_text = result['choices'][0]['message']['content']
+            
+            # Поиск JSON в тексте
             json_match = re.search(r'\[.*\]', raw_text, re.DOTALL)
             if json_match:
                 predictions = json.loads(json_match.group(0))
                 data['ai_analysis'] = predictions
+                
                 with open('data/final_stats.json', 'w', encoding='utf-8') as f:
                     json.dump(data, f, ensure_ascii=False, indent=4)
-                print("УРА! Прогнозы успешно записаны через новый API.")
+                print("УРА! Прогнозы получены и сохранены.")
             else:
-                print(f"Не удалось найти JSON. Ответ: {raw_text[:100]}")
+                print(f"ИИ прислал текст без JSON: {raw_text}")
         else:
-            print(f"Ошибка API: {result}")
+            print(f"Необычный ответ от API: {result}")
 
     except Exception as e:
-        print(f"Произошла ошибка: {e}")
+        print(f"Критическая ошибка: {e}")
 
 if __name__ == "__main__":
     ask_ai()

@@ -13,13 +13,13 @@ def ask_ai():
         with open('data/final_stats.json', 'r', encoding='utf-8') as f:
             data = json.load(f)
     except Exception as e:
-        print(f"Ошибка загрузки данных: {e}")
+        print(f"Файл не найден: {e}")
         return
 
-    teams_context = json.dumps(data['teams'][:10], ensure_ascii=False)
+    teams_context = json.dumps(data['teams'][:12], ensure_ascii=False)
     
-    # ПРАВИЛЬНЫЙ URL для Router (без названия модели в адресе!)
-    url = "https://router.huggingface.co/hf-inference/v1/chat/completions"
+    # URL OpenRouter
+    url = "https://openrouter.ai/api/v1/chat/completions"
     
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -27,33 +27,33 @@ def ask_ai():
     }
     
     payload = {
-        "model": "meta-llama/Llama-3.2-3B-Instruct", 
+        "model": "google/gemini-2.0-flash-exp:free", # БЕСПЛАТНАЯ и мощная модель
         "messages": [
-            {"role": "user", "content": f"NBA stats: {teams_context}. Output 3 match predictions as JSON list. Format: [{{'match': '...', 'winner': '...', 'total': '...', 'prob': '...', 'analysis': '...'}}]. No markdown, no intro."}
-        ],
-        "max_tokens": 500,
-        "temperature": 0.1
+            {
+                "role": "user", 
+                "content": f"NBA Data: {teams_context}. Output 3 predictions in JSON: [{{'match': '...', 'winner': '...', 'total': '...', 'prob': '...', 'analysis': '...'}}]. Only JSON!"
+            }
+        ]
     }
 
     try:
-        print("Отправка запроса в чистый Router...")
+        print("Отправка запроса в OpenRouter...")
         response = requests.post(url, headers=headers, json=payload, timeout=60)
-        
-        if response.status_code == 200:
-            result = response.json()
+        result = response.json()
+
+        if 'choices' in result:
             raw_text = result['choices'][0]['message']['content']
-            
-            # Чистим от возможных Markdown-кавычек ```json
             json_match = re.search(r'\[.*\]', raw_text, re.DOTALL)
+            
             if json_match:
                 data['ai_analysis'] = json.loads(json_match.group(0))
                 with open('data/final_stats.json', 'w', encoding='utf-8') as f:
                     json.dump(data, f, ensure_ascii=False, indent=4)
-                print("ПОБЕДА! Прогнозы записаны.")
+                print("УРА! OpenRouter (Gemini Free) всё сделал.")
             else:
-                print(f"JSON не найден. ИИ прислал: {raw_text[:100]}")
+                print(f"JSON не найден. Ответ: {raw_text[:100]}")
         else:
-            print(f"Ошибка сервера (Статус {response.status_code}): {response.text}")
+            print(f"Ошибка OpenRouter: {result}")
 
     except Exception as e:
         print(f"Критическая ошибка: {e}")

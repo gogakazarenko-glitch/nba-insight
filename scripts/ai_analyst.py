@@ -12,12 +12,13 @@ def ask_ai():
     try:
         with open('data/final_stats.json', 'r', encoding='utf-8') as f:
             data = json.load(f)
-    except:
+    except Exception as e:
+        print(f"Ошибка загрузки данных: {e}")
         return
 
     teams_context = json.dumps(data['teams'][:10], ensure_ascii=False)
     
-    # Используем базовый эндпоинт чата (он сам выберет модель)
+    # ПРАВИЛЬНЫЙ URL для Router (без названия модели в адресе!)
     url = "https://router.huggingface.co/hf-inference/v1/chat/completions"
     
     headers = {
@@ -26,44 +27,36 @@ def ask_ai():
     }
     
     payload = {
-        "model": "meta-llama/Llama-3.2-3B-Instruct", # Легкая и быстрая модель
+        "model": "meta-llama/Llama-3.2-3B-Instruct", 
         "messages": [
-            {"role": "user", "content": f"NBA data: {teams_context}. Output 3 match predictions in STRICT JSON format only. Format: [{{'match': '...', 'winner': '...', 'total': '...', 'prob': '...', 'analysis': '...'}}]. No conversation, no markdown, just JSON."}
+            {"role": "user", "content": f"NBA stats: {teams_context}. Output 3 match predictions as JSON list. Format: [{{'match': '...', 'winner': '...', 'total': '...', 'prob': '...', 'analysis': '...'}}]. No markdown, no intro."}
         ],
         "max_tokens": 500,
         "temperature": 0.1
     }
 
     try:
-        print("Пробую получить прогнозы через универсальный Router...")
+        print("Отправка запроса в чистый Router...")
         response = requests.post(url, headers=headers, json=payload, timeout=60)
         
-        if response.status_code != 200:
-            print(f"Ошибка (Статус {response.status_code}): {response.text}")
-            # Если 404, попробуем еще один запасной путь прямо сейчас
-            if response.status_code == 404:
-                 print("Пробую альтернативный путь...")
-                 url = "https://api-inference.huggingface.co/models/meta-llama/Llama-3.2-3B-Instruct/v1/chat/completions"
-                 response = requests.post(url, headers=headers, json=payload, timeout=60)
-
-        result = response.json()
-        if 'choices' in result:
+        if response.status_code == 200:
+            result = response.json()
             raw_text = result['choices'][0]['message']['content']
             
-            # Ищем JSON
+            # Чистим от возможных Markdown-кавычек ```json
             json_match = re.search(r'\[.*\]', raw_text, re.DOTALL)
             if json_match:
                 data['ai_analysis'] = json.loads(json_match.group(0))
                 with open('data/final_stats.json', 'w', encoding='utf-8') as f:
                     json.dump(data, f, ensure_ascii=False, indent=4)
-                print("ПОБЕДА! Данные получены.")
+                print("ПОБЕДА! Прогнозы записаны.")
             else:
-                print(f"Текст без JSON: {raw_text[:100]}")
+                print(f"JSON не найден. ИИ прислал: {raw_text[:100]}")
         else:
-            print(f"API ответил странно: {result}")
+            print(f"Ошибка сервера (Статус {response.status_code}): {response.text}")
 
     except Exception as e:
-        print(f"Ошибка: {e}")
+        print(f"Критическая ошибка: {e}")
 
 if __name__ == "__main__":
     ask_ai()

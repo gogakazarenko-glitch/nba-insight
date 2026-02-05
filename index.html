@@ -34,50 +34,63 @@
             </table>
         </div>
     </div>
+<script>
+    async function load() {
+        const aiContainer = document.getElementById('ai-predictions');
+        const tableBody = document.getElementById('stats-table');
 
-    <script>
-        async function load() {
-            try {
-                const r = await fetch('./data/final_stats.json');
-                const d = await r.json();
-// Замени этот кусок внутри loadData()
-if (data.ai_analysis) {
-    document.getElementById('ai-predictions').innerHTML = data.ai_analysis.map(p => `
-        <div class="bg-gray-900 p-8 rounded-3xl border border-gray-800 shadow-2xl mb-6">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-2xl font-black uppercase italic text-blue-500">${p.match}</h3>
-                <span class="bg-blue-600 text-[10px] px-2 py-1 rounded-full font-bold uppercase">${p.prob} CONFIDENCE</span>
-            </div>
-            
-            <div class="grid grid-cols-2 gap-4 mb-6">
-                <div class="bg-gray-800 p-3 rounded-xl">
-                    <p class="text-[10px] text-gray-500 uppercase font-bold">Рекомендация</p>
-                    <p class="text-green-400 font-bold">Победа: ${p.winner}</p>
-                </div>
-                <div class="bg-gray-800 p-3 rounded-xl">
-                    <p class="text-[10px] text-gray-500 uppercase font-bold">Прогноз Тотала</p>
-                    <p class="text-orange-400 font-bold">${p.total}</p>
-                </div>
-            </div>
+        try {
+            // Добавляем метку времени, чтобы Гитхаб не подсовывал старый файл
+            const timestamp = new Date().getTime();
+            const response = await fetch('./data/final_stats.json?t=' + timestamp);
+            const data = await response.json();
 
-            <div class="border-t border-gray-800 pt-4">
-                <p class="text-[10px] text-gray-500 uppercase font-bold mb-2 tracking-widest">Аналитический разбор эксперта:</p>
-                <p class="text-gray-300 text-sm leading-relaxed italic leading-6">${p.analysis}</p>
-            </div>
-        </div>
-    `).join('');
-}
-                
-                document.getElementById('stats-table').innerHTML = d.teams.map(t => `
-                    <tr class="border-b border-gray-800 hover:bg-gray-800/30 transition">
-                        <td class="p-4 font-mono text-gray-600">${t.rank}</td>
-                        <td class="p-4 font-bold uppercase italic text-blue-100">${t.team}</td>
-                        <td class="p-4 text-center font-bold text-blue-500">${t.rating}</td>
+            console.log("Данные загружены:", data);
+
+            // Рендер прогнозов ИИ
+            if (data.ai_analysis && data.ai_analysis.length > 0) {
+                aiContainer.innerHTML = data.ai_analysis.map(p => `
+                    <div class="bg-gray-900 p-6 rounded-3xl border border-blue-900/30 shadow-xl mb-4">
+                        <div class="flex justify-between items-start mb-4">
+                            <h3 class="text-xl font-black uppercase text-white tracking-tighter">${p.match}</h3>
+                            <span class="text-[10px] bg-blue-600 px-2 py-1 rounded-md font-bold">${p.prob || 'АНАЛИЗ'}</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 mb-4">
+                            <div class="bg-black/50 p-3 rounded-2xl border border-gray-800">
+                                <p class="text-[9px] text-gray-500 uppercase font-bold">Победитель</p>
+                                <p class="text-green-400 font-bold text-sm">${p.winner}</p>
+                            </div>
+                            <div class="bg-black/50 p-3 rounded-2xl border border-gray-800">
+                                <p class="text-[9px] text-gray-500 uppercase font-bold">Тотал</p>
+                                <p class="text-orange-400 font-bold text-sm">${p.total}</p>
+                            </div>
+                        </div>
+                        <p class="text-gray-400 text-xs italic leading-relaxed border-t border-gray-800 pt-3">
+                            ${p.analysis || p.reason || "Анализ формируется..."}
+                        </p>
+                    </div>
+                `).join('');
+            } else {
+                aiContainer.innerHTML = "<p class='text-gray-500 italic text-sm'>ИИ анализирует матчи, подождите 5-10 минут...</p>";
+            }
+
+            // Рендер таблицы рейтинга
+            if (data.teams) {
+                tableBody.innerHTML = data.teams.map(t => `
+                    <tr class="border-b border-gray-800 hover:bg-gray-800/50">
+                        <td class="p-4 font-mono text-gray-600 text-xs">${t.rank}</td>
+                        <td class="p-4 font-bold uppercase italic text-sm text-blue-200">${t.team}</td>
+                        <td class="p-4 text-center font-bold text-blue-500 font-mono text-sm">${t.rating}</td>
                     </tr>
                 `).join('');
-            } catch (e) { console.log(e); }
+            }
+
+        } catch (error) {
+            console.error("Ошибка:", error);
+            aiContainer.innerHTML = "<p class='text-red-500'>Ошибка загрузки JSON. Проверьте Actions на GitHub.</p>";
         }
-        load();
-    </script>
-</body>
+    }
+    load();
+</script>
+    </body>
 </html>
